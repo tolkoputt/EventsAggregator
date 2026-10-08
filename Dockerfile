@@ -11,9 +11,11 @@ COPY pyproject.toml uv.lock README.md ./
 
 RUN uv sync --frozen --no-dev --no-install-project
 
-COPY --chown=appuser:appuser src/ ./src/
+COPY src/ ./src/
 
 RUN uv sync --frozen --no-dev
+
+RUN chown -R appuser:appuser /app
 
 USER appuser
 
