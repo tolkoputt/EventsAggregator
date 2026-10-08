@@ -7,7 +7,13 @@ authors = [
     { name = "oma", email = "oma@dk-sp.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pydantic-settings>=2.15.0",
+    "asyncpg>=0.31.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "fastapi>=0.143.0",
+    "uvicorn[standard]>=0.54.0",
+]
 
 [project.scripts]
 eventsaggregator = "eventsaggregator:main"
