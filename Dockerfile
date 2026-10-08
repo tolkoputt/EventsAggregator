@@ -5,12 +5,11 @@ RUN addgroup --system --gid 1000 appuser && \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-ENV UV_LINK_MODE=copy
-
 WORKDIR /app
 
-COPY pyproject.toml uv.lock README.md ./
+ENV UV_LINK_MODE=copy
 
+COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY src/ ./src/
