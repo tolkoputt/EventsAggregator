@@ -3,10 +3,21 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Uuid
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from eventsaggregator.db.db import Base
+
+class Base(DeclarativeBase):
+    pass
+
+
+class Sync(Base):
+    __tablename__ = "syncs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_sync_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_changed_at: Mapped[str] = mapped_column(String(), index=True)
+    sync_status: Mapped[bool] = mapped_column(Boolean())
 
 
 class Place(Base):
@@ -20,14 +31,7 @@ class Place(Base):
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    event_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("events.id"),
-        index=True,
-        unique=True,
-    )
-
-    event: Mapped[Event] = relationship(back_populates="place")
+    events: Mapped[list[Event]] = relationship(back_populates="place")
 
 
 class Event(Base):
@@ -43,4 +47,10 @@ class Event(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status_changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    place: Mapped[Place] = relationship(back_populates="event")
+    place_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("places.id"),
+        index=True,
+    )
+
+    place: Mapped[Place] = relationship(back_populates="events")

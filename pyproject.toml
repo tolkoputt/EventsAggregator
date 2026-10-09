@@ -15,6 +15,7 @@ dependencies = [
     "uvicorn[standard]>=0.54.0",
     "httpx>=0.28.1",
     "alembic>=1.20.0",
+    "apscheduler>=3.11.3",
 ]
 
 [project.scripts]
