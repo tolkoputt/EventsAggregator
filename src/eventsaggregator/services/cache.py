@@ -1,5 +1,4 @@
 from cachetools import TTLCache
-from fastapi import Request
 
 
 class EventsCache:
@@ -18,7 +17,3 @@ class EventsCache:
 
     def clear(self):
         self._cache.clear()
-
-
-def get_cashe(request: Request) -> EventsCache:
-    return request.app.state.cashe

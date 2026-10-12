@@ -6,20 +6,25 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import APIRouter, FastAPI
 
-from eventsaggregator.core.cashe import EventsCache
+from eventsaggregator.client.provider import EventProviderClient
 from eventsaggregator.core.config import settings
 from eventsaggregator.db.db import async_session_factory
+from eventsaggregator.db.repositories import EventRepository
 from eventsaggregator.routers import events, health, sync
-from eventsaggregator.services.sync import sync_events
+from eventsaggregator.services.cache import EventsCache
+from eventsaggregator.services.sync import SyncService
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
-async def run_scheduled_sync(http: httpx.AsyncClient) -> None:
+async def run_scheduled_sync(provider: EventProviderClient) -> None:
     try:
         async with async_session_factory() as session:
-            if await sync_events(http, session):
+            repository = EventRepository(session)
+            service = SyncService(events=repository, client=provider)
+
+            if await service.sync_events():
                 logger.info("Scheduled sync finished")
             else:
                 logger.warning("Scheduled sync skipped: another sync is running")
@@ -35,11 +40,13 @@ async def lifespan(app: FastAPI):
         follow_redirects=True,
     )
 
+    provider = EventProviderClient(app.state.http, settings.EXTERNAL_API_KEY)
+
     scheduler = AsyncIOScheduler(timezone="Asia/Yekaterinburg")
     scheduler.add_job(
         run_scheduled_sync,
         CronTrigger(hour=3, minute=0),
-        args=[app.state.http],
+        args=[provider],
         id="daily_sync",
         replace_existing=True,
         max_instances=1,
@@ -48,12 +55,12 @@ async def lifespan(app: FastAPI):
     )
     scheduler.start()
 
-    app.state.cashe = EventsCache()
+    app.state.cache = EventsCache()
 
     yield
 
     scheduler.shutdown(wait=False)
-    app.state.cashe = None
+    app.state.cache = None
     await app.state.http.aclose()
 
 

@@ -1,31 +1,40 @@
 from typing import Annotated
 from uuid import UUID
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from eventsaggregator.core.cashe import EventsCache, get_cashe
-from eventsaggregator.db.db import get_async_session
-from eventsaggregator.db.query import event_status, list_events, one_event
-from eventsaggregator.http.request import fetch_seats, get_http
-from eventsaggregator.http.schemas import (
+from eventsaggregator.core.exceptions import EventNotFound, EventNotPublished
+from eventsaggregator.deps import get_events_service, get_seats_service
+from eventsaggregator.schemas.events import (
     EventOutSeatsPattern,
     Page,
     PageParams,
     Seats,
 )
+from eventsaggregator.services.events import EventsService
+from eventsaggregator.services.seats import SeatsService
 
 router = APIRouter(prefix="/events", tags=["events"])
+
+
+@router.get("/{event_id}", response_model=EventOutSeatsPattern)
+async def get_event(
+    event_id: UUID,
+    event_service: Annotated[EventsService, Depends(get_events_service)],
+) -> EventOutSeatsPattern:
+    result = await event_service.get_event(event_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return result
 
 
 @router.get("", response_model=Page)
 async def get_events(
     request: Request,
     params: Annotated[PageParams, Query()],
-    session: Annotated[AsyncSession, Depends(get_async_session)],
+    event_service: Annotated[EventsService, Depends(get_events_service)],
 ):
-    items, total = await list_events(session, params)
+    items, total = await event_service.list_events(params)
 
     def link(page: int) -> str:
         return str(request.url.include_query_params(page=page))
@@ -40,32 +49,13 @@ async def get_events(
     )
 
 
-@router.get("/{event_id}", response_model=EventOutSeatsPattern)
-async def get_event(
-    event_id: UUID,
-    session: Annotated[AsyncSession, Depends(get_async_session)],
-):
-    result = await one_event(session, event_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Event not found")
-    return result
-
-
 @router.get("/{event_id}/seats", response_model=Seats)
 async def get_event_seats(
-    event_id: UUID,
-    client: Annotated[httpx.AsyncClient, Depends(get_http)],
-    session: Annotated[AsyncSession, Depends(get_async_session)],
-    cashe: Annotated[EventsCache, Depends(get_cashe)],
-) -> Seats:
-    status = await event_status(session, event_id)
-    if status != "published":
-        raise HTTPException(status_code=404, detail="Event not published")
-
-    result = await fetch_seats(client, event_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Event not found")
-
-    cashe.set(str(event_id), result.seats)
-
-    return Seats(event_id=event_id, available_seats=result.seats)
+    event_id: UUID, seats_service: Annotated[SeatsService, Depends(get_seats_service)]
+):
+    try:
+        return await seats_service.get_seats(event_id)
+    except EventNotFound:
+        raise HTTPException(404, "Event not found")
+    except EventNotPublished:
+        raise HTTPException(404, "Event not published")

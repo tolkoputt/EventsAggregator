@@ -1,24 +1,18 @@
 from typing import Annotated
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException
 
-from eventsaggregator.db.db import get_async_session
-from eventsaggregator.http.request import get_http
-from eventsaggregator.services.sync import sync_events
+from eventsaggregator.deps import get_sync_service
+from eventsaggregator.services.sync import SyncService
 
 router = APIRouter(prefix="/sync/trigger", tags=["sync"])
 
 
 @router.post("")
-async def sync_trigger_req(
-    client: Annotated[httpx.AsyncClient, Depends(get_http)],
-    session: Annotated[AsyncSession, Depends(get_async_session)],
-) -> dict[str, str]:
-    if not await sync_events(client, session):
+async def sync_trigger(sync_service: Annotated[SyncService, Depends(get_sync_service)]):
+    if not await sync_service.sync_events():
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
+            status_code=409,
             detail="Sync is already running",
         )
     return {"status": "success"}
