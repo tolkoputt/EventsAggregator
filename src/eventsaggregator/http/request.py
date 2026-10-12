@@ -1,8 +1,10 @@
+from uuid import UUID
+
 import httpx
 from fastapi import Request
 
 from eventsaggregator.core.config import settings
-from eventsaggregator.http.schemas import SyncTriggerResponse
+from eventsaggregator.http.schemas import SeatsFromExtAPI, SyncTriggerResponse
 
 
 def get_http(request: Request) -> httpx.AsyncClient:
@@ -30,3 +32,13 @@ async def fetch_next_events(
     )
     response.raise_for_status()
     return SyncTriggerResponse(**response.json())
+
+
+async def fetch_seats(client: httpx.AsyncClient, event_id: UUID) -> SeatsFromExtAPI:
+    response = await client.get(
+        f"/api/events/{event_id}/seats/",
+        headers={"x-api-key": settings.EXTERNAL_API_KEY},
+    )
+    response.raise_for_status()
+    print(response.json())
+    return SeatsFromExtAPI(**response.json())

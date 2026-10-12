@@ -25,3 +25,15 @@ async def list_events(session, params: PageParams) -> tuple[list[Event], int]:
         stmt = stmt.where(Event.event_time >= params.date_from)
     items = (await session.scalars(stmt)).all()
     return list(items), total
+
+
+async def one_event(session, event_id: int) -> Event | None:
+    stmt = select(Event).options(joinedload(Event.place)).where(Event.id == event_id)
+    result = await session.scalar(stmt)
+    return result
+
+
+async def event_status(session, event_id: int) -> str | None:
+    stmt = select(Event.status).where(Event.id == event_id)
+    result = await session.scalar(stmt)
+    return result

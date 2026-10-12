@@ -41,6 +41,15 @@ class PlaceOut(BaseModel):
     address: str
 
 
+class PlaceOutSeatsPattern(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    name: str
+    city: str
+    address: str
+    seats_pattern: str
+
+
 class EventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -50,6 +59,26 @@ class EventOut(BaseModel):
     registration_deadline: datetime
     status: str
     number_of_visitors: int
+
+
+class EventOutSeatsPattern(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    name: str
+    place: PlaceOutSeatsPattern
+    event_time: datetime
+    registration_deadline: datetime
+    status: str
+    number_of_visitors: int
+
+
+class SeatsFromExtAPI(BaseModel):
+    seats: list[str]
+
+
+class Seats(BaseModel):
+    event_id: UUID
+    available_seats: list[str]
 
 
 class PageParams(BaseModel):

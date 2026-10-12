@@ -6,6 +6,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import APIRouter, FastAPI
 
+from eventsaggregator.core.cashe import EventsCache
 from eventsaggregator.core.config import settings
 from eventsaggregator.db.db import async_session_factory
 from eventsaggregator.routers import events, health, sync
@@ -47,9 +48,12 @@ async def lifespan(app: FastAPI):
     )
     scheduler.start()
 
+    app.state.cashe = EventsCache()
+
     yield
 
     scheduler.shutdown(wait=False)
+    app.state.cashe = None
     await app.state.http.aclose()
 
 
