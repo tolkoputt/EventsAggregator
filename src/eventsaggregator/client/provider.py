@@ -2,7 +2,11 @@ from uuid import UUID
 
 import httpx
 
-from eventsaggregator.client.schemas import SeatsFromExtAPI, SyncTriggerResponse
+from eventsaggregator.client.schemas import (
+    RegisterTicket,
+    SeatsFromExtAPI,
+    SyncTriggerResponse,
+)
 
 
 class EventProviderClient:
@@ -35,3 +39,19 @@ class EventProviderClient:
         response.raise_for_status()
         print(response.json())
         return SeatsFromExtAPI(**response.json())
+
+    async def register_ticket(
+        self, event_id: UUID, seat: str, first_name: str, last_name: str, email: str
+    ) -> None:
+        response = await self.client.post(
+            f"/api/events/{event_id}/register/",
+            json={
+                "first_name": first_name,
+                "last_name": last_name,
+                "seat": seat,
+                "email": email,
+            },
+            headers={"x-api-key": self.api_key},
+        )
+        response.raise_for_status()
+        return RegisterTicket(**response.json())

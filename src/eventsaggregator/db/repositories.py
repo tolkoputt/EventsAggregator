@@ -1,3 +1,6 @@
+from datetime import datetime
+from uuid import UUID
+
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -31,14 +34,14 @@ class EventRepository:
         items = (await self.session.scalars(stmt)).all()
         return list(items), total
 
-    async def one_event(self, event_id: int) -> Event | None:
+    async def one_event(self, event_id: UUID) -> Event | None:
         stmt = (
             select(Event).options(joinedload(Event.place)).where(Event.id == event_id)
         )
         result = await self.session.scalar(stmt)
         return result
 
-    async def event_status(self, event_id: int) -> str | None:
+    async def event_status(self, event_id: UUID) -> str | None:
         stmt = select(Event.status).where(Event.id == event_id)
         result = await self.session.scalar(stmt)
         return result
@@ -74,3 +77,8 @@ class EventRepository:
                 sync_status=True,
             )
         )
+
+    async def get_reg_deadline(self, event_id: UUID) -> datetime | None:
+        stmt = select(Event.registration_deadline).where(Event.id == event_id)
+        result = await self.session.scalar(stmt)
+        return result

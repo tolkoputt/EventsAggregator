@@ -4,3 +4,7 @@ class EventNotFound(Exception):
 
 class EventNotPublished(Exception):
     pass
+
+
+class RegistrationDeadlinePassed(Exception):
+    pass

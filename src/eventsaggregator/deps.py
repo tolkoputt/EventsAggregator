@@ -13,6 +13,7 @@ from eventsaggregator.services.cache import EventsCache
 from eventsaggregator.services.events import EventsService
 from eventsaggregator.services.seats import SeatsService
 from eventsaggregator.services.sync import SyncService
+from eventsaggregator.services.ticket import TicketService
 
 
 def get_http(request: Request) -> httpx.AsyncClient:
@@ -54,3 +55,10 @@ def get_seats_service(
     cache: Annotated[EventsCache, Depends(get_cache)],
 ) -> SeatsService:
     return SeatsService(events=events, provider=provider, cache=cache)
+
+
+def get_ticket_service(
+    events: Annotated[EventRepository, Depends(get_event_repo)],
+    provider: Annotated[EventProviderClient, Depends(get_provider)],
+) -> TicketService:
+    return TicketService(events=events, provider=provider)

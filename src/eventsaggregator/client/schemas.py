@@ -35,3 +35,7 @@ class SyncTriggerResponse(BaseModel):
 
 class SeatsFromExtAPI(BaseModel):
     seats: list[str]
+
+
+class RegisterTicket(BaseModel):
+    ticket_id: UUID

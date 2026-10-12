@@ -22,8 +22,9 @@ async def get_event(
     event_id: UUID,
     event_service: Annotated[EventsService, Depends(get_events_service)],
 ) -> EventOutSeatsPattern:
-    result = await event_service.get_event(event_id)
-    if not result:
+    try:
+        result = await event_service.get_event(event_id)
+    except EventNotFound:
         raise HTTPException(status_code=404, detail="Event not found")
     return result
 
