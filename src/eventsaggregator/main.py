@@ -8,7 +8,7 @@ from fastapi import APIRouter, FastAPI
 
 from eventsaggregator.core.config import settings
 from eventsaggregator.db.db import async_session_factory
-from eventsaggregator.routers import health, sync
+from eventsaggregator.routers import events, health, sync
 from eventsaggregator.services.sync import sync_events
 
 logger = logging.getLogger(__name__)
@@ -56,6 +56,7 @@ async def lifespan(app: FastAPI):
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health.router)
 api_router.include_router(sync.router)
+api_router.include_router(events.router)
 
 
 app = FastAPI(lifespan=lifespan)
