@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from eventsaggregator.core.exceptions import (
     EventNotFound,
@@ -21,7 +21,7 @@ from eventsaggregator.services.ticket import TicketService
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
 
-@router.post("")
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def get_ticket(
     data: TicketRequest,
     ticket_service: Annotated[TicketService, Depends(get_ticket_service)],
