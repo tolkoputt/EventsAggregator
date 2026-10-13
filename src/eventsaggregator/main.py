@@ -89,7 +89,11 @@ async def provider_error_handler(request: Request, exc: ProviderError):
 async def request_validation_error_handler(
     request: Request, exc: RequestValidationError
 ):
-    if any(error["loc"][0] == "body" for error in exc.errors()):
+    if (
+        request.method == "POST"
+        and request.url.path == "/api/tickets"
+        and any(error["loc"][0] == "body" for error in exc.errors())
+    ):
         return JSONResponse(status_code=400, content={"detail": "Invalid body"})
 
     return await request_validation_exception_handler(request, exc)
