@@ -5,6 +5,8 @@ import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import APIRouter, FastAPI, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from eventsaggregator.client.provider import EventProviderClient
@@ -81,3 +83,13 @@ app.include_router(api_router)
 async def provider_error_handler(request: Request, exc: ProviderError):
     logger.error("Provider error on %s %s: %s", request.method, request.url, exc)
     return JSONResponse(status_code=502, content={"detail": "External provider error"})
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error_handler(
+    request: Request, exc: RequestValidationError
+):
+    if any(error["loc"][0] == "body" for error in exc.errors()):
+        return JSONResponse(status_code=400, content={"detail": "Invalid body"})
+
+    return await request_validation_exception_handler(request, exc)

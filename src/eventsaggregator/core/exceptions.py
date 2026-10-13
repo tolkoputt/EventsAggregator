@@ -14,6 +14,10 @@ class InvalidSeat(Exception):
     pass
 
 
+class InvalidBody(Exception):
+    pass
+
+
 class ProviderError(Exception):
     pass
 

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from eventsaggregator.core.exceptions import (
     EventNotFound,
     EventNotPublished,
+    InvalidBody,
     InvalidSeat,
     RegistrationDeadlinePassed,
     TicketNotFound,
@@ -36,6 +37,8 @@ async def get_ticket(
         raise HTTPException(status_code=400, detail="Registration deadline passed")
     except EventNotFound:
         raise HTTPException(status_code=404, detail="Event not found")
+    except InvalidBody:
+        raise HTTPException(status_code=400, detail="Invalid body")
 
 
 @router.delete("/{ticket_id}")
