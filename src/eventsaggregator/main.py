@@ -4,13 +4,15 @@ from contextlib import asynccontextmanager
 import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from eventsaggregator.client.provider import EventProviderClient
 from eventsaggregator.core.config import settings
+from eventsaggregator.core.exceptions import ProviderError
 from eventsaggregator.db.db import async_session_factory
 from eventsaggregator.db.repositories import EventRepository
-from eventsaggregator.routers import events, health, sync
+from eventsaggregator.routers import events, health, sync, ticket
 from eventsaggregator.services.cache import EventsCache
 from eventsaggregator.services.sync import SyncService
 
@@ -68,7 +70,14 @@ api_router = APIRouter(prefix="/api")
 api_router.include_router(health.router)
 api_router.include_router(sync.router)
 api_router.include_router(events.router)
+api_router.include_router(ticket.router)
 
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(api_router)
+
+
+@app.exception_handler(ProviderError)
+async def provider_error_handler(request: Request, exc: ProviderError):
+    logger.error("Provider error on %s %s: %s", request.method, request.url, exc)
+    return JSONResponse(status_code=502, content={"detail": "External provider error"})

@@ -21,3 +21,7 @@ class TicketRequest(BaseModel):
 
 class TicketResponse(BaseModel):
     ticket_id: UUID
+
+
+class DeleteTicketResponse(BaseModel):
+    success: bool

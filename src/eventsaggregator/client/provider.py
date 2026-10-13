@@ -3,10 +3,12 @@ from uuid import UUID
 import httpx
 
 from eventsaggregator.client.schemas import (
+    DeleteTicket,
     RegisterTicket,
     SeatsFromExtAPI,
     SyncTriggerResponse,
 )
+from eventsaggregator.core.exceptions import ProviderError
 
 
 class EventProviderClient:
@@ -14,36 +16,42 @@ class EventProviderClient:
         self.client = client
         self.api_key = api_key
 
+    async def _request(self, method: str, url: str, **kwargs) -> dict:
+        try:
+            response = await self.client.request(
+                method, url, headers={"x-api-key": self.api_key}, **kwargs
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise ProviderError(str(e)) from e
+        except ValueError as e:
+            raise ProviderError(str(e)) from e
+        return response.json()
+
     async def fetch_events(self, changed_at: str) -> SyncTriggerResponse:
-        response = await self.client.get(
+        resp = await self._request(
+            "GET",
             "/api/events/",
             params={"changed_at": changed_at},
-            headers={"x-api-key": self.api_key},
         )
-        response.raise_for_status()
-        return SyncTriggerResponse(**response.json())
+        return SyncTriggerResponse(**resp)
 
     async def fetch_next_events(self, next_url: str) -> SyncTriggerResponse:
-        response = await self.client.get(
+        resp = await self._request(
+            "GET",
             next_url,
-            headers={"x-api-key": self.api_key},
         )
-        response.raise_for_status()
-        return SyncTriggerResponse(**response.json())
+        return SyncTriggerResponse(**resp)
 
     async def fetch_seats(self, event_id: UUID) -> SeatsFromExtAPI:
-        response = await self.client.get(
-            f"/api/events/{event_id}/seats/",
-            headers={"x-api-key": self.api_key},
-        )
-        response.raise_for_status()
-        print(response.json())
-        return SeatsFromExtAPI(**response.json())
+        resp = await self._request("GET", f"/api/events/{event_id}/seats/")
+        return SeatsFromExtAPI(**resp)
 
     async def register_ticket(
         self, event_id: UUID, seat: str, first_name: str, last_name: str, email: str
-    ) -> None:
-        response = await self.client.post(
+    ) -> RegisterTicket:
+        resp = await self._request(
+            "POST",
             f"/api/events/{event_id}/register/",
             json={
                 "first_name": first_name,
@@ -51,7 +59,13 @@ class EventProviderClient:
                 "seat": seat,
                 "email": email,
             },
-            headers={"x-api-key": self.api_key},
         )
-        response.raise_for_status()
-        return RegisterTicket(**response.json())
+        return RegisterTicket(**resp)
+
+    async def delete_ticket(self, event_id: UUID, ticket_id: UUID) -> DeleteTicket:
+        resp = await self._request(
+            "DELETE",
+            f"/api/events/{event_id}/unregister/",
+            json={"ticket_id": str(ticket_id)},
+        )
+        return DeleteTicket(**resp)

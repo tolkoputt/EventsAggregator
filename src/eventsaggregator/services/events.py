@@ -17,4 +17,6 @@ class EventsService:
         return result
 
     async def list_events(self, params: PageParams) -> tuple[list[Event], int]:
-        return await self.events.list_events(params)
+        return await self.events.list_events(
+            params.date_from, params.page_size, params.offset
+        )

@@ -1,8 +1,7 @@
 from typing import Annotated
 
 import httpx
-from fastapi import Request
-from fastapi.params import Depends
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from eventsaggregator.client.provider import EventProviderClient

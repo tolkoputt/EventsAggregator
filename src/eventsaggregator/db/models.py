@@ -4,7 +4,12 @@ from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, Uuid
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 
 class Base(DeclarativeBase):
@@ -54,3 +59,18 @@ class Event(Base):
     )
 
     place: Mapped[Place] = relationship(back_populates="events")
+    tickets: Mapped[list[Tickets]] = relationship(back_populates="event")
+
+
+class Tickets(Base):
+    __tablename__ = "tickets"
+
+    event_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("events.id"),
+        index=True,
+    )
+    ticket_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    event: Mapped[Event] = relationship(back_populates="tickets")

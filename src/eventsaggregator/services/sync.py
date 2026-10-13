@@ -25,7 +25,7 @@ class SyncService:
         places = {item.place.id: item.place for item in results}
         for place in places.values():
             await self.events.merge_place(place)
-        await self.events.session.flush()
+        await self.events.flush()
 
         for item in results:
             await self.events.merge_event(item)
@@ -33,5 +33,5 @@ class SyncService:
         now = datetime.now(UTC)
         await self.events.merge_sync(now)
 
-        await self.events.session.commit()
+        await self.events.commit()
         return True

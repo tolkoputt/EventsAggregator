@@ -5,20 +5,25 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from eventsaggregator.db.models import Event, Place, Sync
-from eventsaggregator.schemas.events import PageParams
+from eventsaggregator.db.models import Event, Place, Sync, Tickets
 
 
 class EventRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def list_events(self, params: PageParams) -> tuple[list[Event], int]:
+    async def commit(self):
+        await self.session.commit()
+
+    async def flush(self):
+        await self.session.flush()
+
+    async def list_events(
+        self, date_from: datetime | None = None, page_size: int = 10, offset: int = 0
+    ) -> tuple[list[Event], int]:
         total = await self.session.scalar(
-            select(func.count())
-            .select_from(Event)
-            .where(Event.event_time >= params.date_from)
-            if params.date_from
+            select(func.count()).select_from(Event).where(Event.event_time >= date_from)
+            if date_from
             else select(func.count()).select_from(Event)
         )
 
@@ -26,11 +31,11 @@ class EventRepository:
             select(Event)
             .options(joinedload(Event.place))
             .order_by(Event.event_time)
-            .limit(params.page_size)
-            .offset(params.offset)
+            .limit(page_size)
+            .offset(offset)
         )
-        if params.date_from:
-            stmt = stmt.where(Event.event_time >= params.date_from)
+        if date_from:
+            stmt = stmt.where(Event.event_time >= date_from)
         items = (await self.session.scalars(stmt)).all()
         return list(items), total
 
@@ -61,15 +66,15 @@ class EventRepository:
         return last_changed_at
 
     async def merge_place(self, place):
-        self.session.merge(Place(**place.model_dump()))
+        await self.session.merge(Place(**place.model_dump()))
 
     async def merge_event(self, event):
-        self.session.merge(
+        await self.session.merge(
             Event(**event.model_dump(exclude={"place"}), place_id=event.place.id)
         )
 
     async def merge_sync(self, now):
-        self.session.merge(
+        await self.session.merge(
             Sync(
                 id=1,
                 last_sync_time=now,
@@ -82,3 +87,19 @@ class EventRepository:
         stmt = select(Event.registration_deadline).where(Event.id == event_id)
         result = await self.session.scalar(stmt)
         return result
+
+    async def merge_ticket(self, event_id, ticket_id, date):
+        await self.session.merge(
+            Tickets(event_id=event_id, ticket_id=ticket_id, created_at=date)
+        )
+
+    async def get_event_id_by_ticket(self, ticket_id: UUID) -> UUID | None:
+        stmt = select(Tickets.event_id).where(Tickets.ticket_id == ticket_id)
+        result = await self.session.scalar(stmt)
+        return result
+
+    async def delete_ticket(self, ticket_id: UUID):
+        stmt = select(Tickets).where(Tickets.ticket_id == ticket_id)
+        ticket = await self.session.scalar(stmt)
+        if ticket:
+            await self.session.delete(ticket)

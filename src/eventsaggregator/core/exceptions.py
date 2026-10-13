@@ -8,3 +8,15 @@ class EventNotPublished(Exception):
 
 class RegistrationDeadlinePassed(Exception):
     pass
+
+
+class InvalidSeat(Exception):
+    pass
+
+
+class ProviderError(Exception):
+    pass
+
+
+class TicketNotFound(Exception):
+    pass

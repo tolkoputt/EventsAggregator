@@ -39,3 +39,7 @@ class SeatsFromExtAPI(BaseModel):
 
 class RegisterTicket(BaseModel):
     ticket_id: UUID
+
+
+class DeleteTicket(BaseModel):
+    success: bool
