@@ -3,6 +3,10 @@ def is_valid_seat(seats_pattern: str, seat: str) -> bool:
     for part in parts:
         start, count_seat = part.split("-")
         letter = start[0]
-        if letter == seat[0] and int(seat[1:]) <= int(count_seat):
+        if (
+            letter == seat[0]
+            and int(seat[1:]) <= int(count_seat)
+            and int(seat[1:]) >= 1
+        ):
             return True
     return False
