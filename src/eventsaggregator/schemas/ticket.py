@@ -8,7 +8,7 @@ class TicketRequest(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     email: EmailStr
-    seat: str = Field(pattern=r"^[A-Z]\d{1,2}$")
+    seat: str = Field(pattern=r"^[A-Z]\d+$")
 
     @field_validator("first_name", "last_name")
     @classmethod
