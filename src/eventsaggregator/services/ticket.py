@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from eventsaggregator.client.provider import EventProviderClient
+from eventsaggregator.core.enums import EventStatus
 from eventsaggregator.core.exceptions import (
     EventNotFound,
     EventNotPublished,
@@ -27,7 +28,7 @@ class TicketService:
         event = await self.events.one_event(data.event_id)
         if not event:
             raise EventNotFound
-        if event.status != "published":
+        if event.status != EventStatus.PUBLISHED:
             raise EventNotPublished
         if not event.registration_deadline > datetime.now(UTC):
             raise RegistrationDeadlinePassed

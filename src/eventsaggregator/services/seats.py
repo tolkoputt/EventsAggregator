@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from eventsaggregator.client.provider import EventProviderClient
+from eventsaggregator.core.enums import EventStatus
 from eventsaggregator.core.exceptions import EventNotPublished
 from eventsaggregator.db.repositories import EventRepository
 from eventsaggregator.schemas.events import Seats
@@ -14,7 +15,7 @@ class SeatsService:
 
     async def get_seats(self, event_id: UUID) -> Seats:
         status = await self.events.event_status(event_id)
-        if status != "published":
+        if status != EventStatus.PUBLISHED:
             raise EventNotPublished
 
         cached_seats = self.cache.get(str(event_id))

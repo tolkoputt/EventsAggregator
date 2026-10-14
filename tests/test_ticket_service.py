@@ -4,6 +4,7 @@ from uuid import UUID
 
 import pytest
 
+from eventsaggregator.core.enums import EventStatus
 from eventsaggregator.core.exceptions import (
     EventNotFound,
     EventNotPublished,
@@ -23,7 +24,7 @@ def event_id():
 @pytest.fixture
 def valid_event():
     return SimpleNamespace(
-        status="published",
+        status=EventStatus.PUBLISHED,
         registration_deadline=datetime.now(UTC) + timedelta(hours=1),
         place=SimpleNamespace(seats_pattern="A1-10,B1-5"),
     )
@@ -41,7 +42,7 @@ def invalid_event():
 @pytest.fixture
 def expired_event():
     return SimpleNamespace(
-        status="published",
+        status=EventStatus.PUBLISHED,
         registration_deadline=datetime.now(UTC) - timedelta(seconds=1),
         place=SimpleNamespace(seats_pattern="A1-10"),
     )
@@ -131,7 +132,7 @@ async def test_get_ticket_raises_when_registration_deadline_passed(
 @pytest.mark.asyncio
 async def test_get_ticket_raises_when_seat_is_invalid(ticket_request):
     event = SimpleNamespace(
-        status="published",
+        status=EventStatus.PUBLISHED,
         registration_deadline=datetime.now(UTC) + timedelta(hours=1),
         place=SimpleNamespace(seats_pattern="A1-10"),
     )

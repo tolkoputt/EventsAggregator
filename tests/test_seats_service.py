@@ -3,9 +3,8 @@ from uuid import UUID
 
 import pytest
 
-from eventsaggregator.core.exceptions import (
-    EventNotPublished,
-)
+from eventsaggregator.core.enums import EventStatus
+from eventsaggregator.core.exceptions import EventNotPublished
 from eventsaggregator.services.seats import SeatsService
 
 
@@ -64,7 +63,7 @@ async def test_get_seats_raises_when_event_is_not_published():
 async def test_get_seats_fetches_and_caches_seats_when_cache_is_empty():
     event_id = UUID("1045417a-8597-4d37-9e7d-57c44576b871")
     available_seats = ["A1", "A2"]
-    repo = FakeRepo("published")
+    repo = FakeRepo(EventStatus.PUBLISHED)
     provider = FakeProvider(seats=available_seats)
     cache = FakeCache()
     service = SeatsService(events=repo, provider=provider, cache=cache)
@@ -82,7 +81,7 @@ async def test_get_seats_fetches_and_caches_seats_when_cache_is_empty():
 async def test_get_seats_returns_cached_seats_without_calling_provider():
     event_id = UUID("1045417a-8597-4d37-9e7d-57c44576b871")
     available_seats = ["B1", "B2"]
-    repo = FakeRepo("published")
+    repo = FakeRepo(EventStatus.PUBLISHED)
     provider = FakeProvider(seats=["C1"])
     cache = FakeCache({str(event_id): available_seats})
     service = SeatsService(events=repo, provider=provider, cache=cache)

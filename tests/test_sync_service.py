@@ -4,6 +4,7 @@ from uuid import UUID
 
 import pytest
 
+from eventsaggregator.services import sync as sync_module
 from eventsaggregator.services.sync import SyncService
 
 
@@ -32,19 +33,37 @@ class FakeRepo:
         self.calls.append(("commit",))
 
 
-class FakeClient:
-    def __init__(self, pages):
-        self.pages = iter(pages)
-        self.fetch_events_calls = []
-        self.fetch_next_events_calls = []
+class FakePaginator:
+    def __init__(self, registry, client, changed_at):
+        self.client = client
+        self.changed_at = changed_at
+        self._pages = iter(registry.pages)
+        registry.instances.append(self)
 
-    async def fetch_events(self, changed_at):
-        self.fetch_events_calls.append(changed_at)
-        return next(self.pages)
+    def __aiter__(self):
+        return self
 
-    async def fetch_next_events(self, next_url):
-        self.fetch_next_events_calls.append(next_url)
-        return next(self.pages)
+    async def __anext__(self):
+        try:
+            return next(self._pages)
+        except StopIteration:
+            raise StopAsyncIteration from None
+
+
+class PaginatorRegistry:
+    def __init__(self):
+        self.pages = []
+        self.instances = []
+
+    def __call__(self, client, changed_at):
+        return FakePaginator(self, client, changed_at)
+
+
+@pytest.fixture
+def paginator(monkeypatch):
+    registry = PaginatorRegistry()
+    monkeypatch.setattr(sync_module, "EventsPaginator", registry)
+    return registry
 
 
 def make_event(event_id, place):
@@ -55,40 +74,38 @@ def make_event(event_id, place):
 
 
 @pytest.mark.asyncio
-async def test_sync_events_skips_sync_when_another_sync_holds_lock():
+async def test_sync_events_skips_sync_when_another_sync_holds_lock(paginator):
     repo = FakeRepo(last_changed_at=False)
-    client = FakeClient(pages=[])
-    service = SyncService(events=repo, client=client)
+    service = SyncService(events=repo, client=object())
 
     result = await service.sync_events()
 
     assert result is False
     assert repo.calls == [("get_last_changed_at",)]
-    assert client.fetch_events_calls == []
-    assert client.fetch_next_events_calls == []
+    assert paginator.instances == []
 
 
 @pytest.mark.asyncio
-async def test_sync_events_fetches_all_pages_and_persists_events_and_places():
+async def test_sync_events_collects_all_pages_and_persists_events_and_places(paginator):
     place_a = SimpleNamespace(id=UUID("1045417a-8597-4d37-9e7d-57c44576b871"))
     place_b = SimpleNamespace(id=UUID("2045417a-8597-4d37-9e7d-57c44576b872"))
     event_a = make_event("3045417a-8597-4d37-9e7d-57c44576b873", place_a)
     event_b = make_event("4045417a-8597-4d37-9e7d-57c44576b874", place_a)
     event_c = make_event("5045417a-8597-4d37-9e7d-57c44576b875", place_b)
     repo = FakeRepo(last_changed_at="2026-10-12")
-    client = FakeClient(
-        pages=[
-            SimpleNamespace(results=[event_a, event_b], next="next-page"),
-            SimpleNamespace(results=[event_c], next=None),
-        ]
-    )
+    client = object()
+    paginator.pages = [
+        SimpleNamespace(results=[event_a, event_b]),
+        SimpleNamespace(results=[event_c]),
+    ]
     service = SyncService(events=repo, client=client)
 
     result = await service.sync_events()
 
     assert result is True
-    assert client.fetch_events_calls == ["2026-10-12"]
-    assert client.fetch_next_events_calls == ["next-page"]
+    assert len(paginator.instances) == 1
+    assert paginator.instances[0].client is client
+    assert paginator.instances[0].changed_at == "2026-10-12"
     assert repo.calls[:4] == [
         ("get_last_changed_at",),
         ("merge_place", place_a),
@@ -107,16 +124,15 @@ async def test_sync_events_fetches_all_pages_and_persists_events_and_places():
 
 
 @pytest.mark.asyncio
-async def test_sync_events_uses_initial_date_when_no_previous_sync_exists():
+async def test_sync_events_uses_initial_date_when_no_previous_sync_exists(paginator):
     repo = FakeRepo(last_changed_at=None)
-    client = FakeClient(pages=[SimpleNamespace(results=[], next=None)])
-    service = SyncService(events=repo, client=client)
+    paginator.pages = [SimpleNamespace(results=[])]
+    service = SyncService(events=repo, client=object())
 
     result = await service.sync_events()
 
     assert result is True
-    assert client.fetch_events_calls == ["2000-01-01"]
-    assert client.fetch_next_events_calls == []
+    assert paginator.instances[0].changed_at == "2000-01-01"
     assert repo.calls[1][0] == "flush"
     assert repo.calls[2][0] == "merge_sync"
     assert repo.calls[3] == ("commit",)

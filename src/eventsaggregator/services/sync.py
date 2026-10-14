@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+from eventsaggregator.client.paginator import EventsPaginator
 from eventsaggregator.client.provider import EventProviderClient
 from eventsaggregator.db.repositories import EventRepository
 
@@ -14,13 +15,9 @@ class SyncService:
         if last_changed_at is False:
             return False
 
-        data = await self.client.fetch_events(last_changed_at or "2000-01-01")
-        results = data.results
-        next_url = data.next
-        while next_url:
-            page = await self.client.fetch_next_events(next_url)
+        results = []
+        async for page in EventsPaginator(self.client, last_changed_at or "2000-01-01"):
             results.extend(page.results)
-            next_url = page.next
 
         places = {item.place.id: item.place for item in results}
         for place in places.values():

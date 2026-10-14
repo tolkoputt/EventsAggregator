@@ -22,11 +22,11 @@ class EventProviderClient:
                 method, url, headers={"x-api-key": self.api_key}, **kwargs
             )
             response.raise_for_status()
+            return response.json()
         except httpx.HTTPError as e:
             raise ProviderError(str(e)) from e
         except ValueError as e:
             raise ProviderError(str(e)) from e
-        return response.json()
 
     async def fetch_events(self, changed_at: str) -> SyncTriggerResponse:
         resp = await self._request(
