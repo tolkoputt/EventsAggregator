@@ -27,7 +27,7 @@ def event_id():
 
 @pytest.fixture
 def idempotency_key():
-    return UUID("b78691b3-082c-47d9-8521-eedc276fbdb0")
+    return "client-request-123"
 
 
 @pytest.fixture
@@ -80,9 +80,7 @@ class FakeRepo:
         self.last_idempotency_key = None
         self.requested_event_id = None
         self.requested_ticket_id = None
-        self.merged_ticket: tuple[UUID, UUID, UUID, dict[str, Any], datetime] | None = (
-            None
-        )
+        self.merged_ticket: dict[str, Any] | None = None
         self.outbox_entry: tuple[UUID, str, dict[str, Any], bool, datetime] | None = (
             None
         )
@@ -92,24 +90,14 @@ class FakeRepo:
         self.requested_event_id = event_id
         return self.event
 
-    async def merge_ticket(
-        self, idempotency_key, event_id, ticket_id, payload, created_at
-    ):
-        self.merged_ticket = (
-            idempotency_key,
-            event_id,
-            ticket_id,
-            payload,
-            created_at,
-        )
+    async def merge_ticket(self, **ticket_data):
+        self.merged_ticket = ticket_data
         if self.fail_on == "merge_ticket":
             raise RuntimeError("ticket persistence failed")
 
-    async def update_outbox(
-        self, idempotency_key, operation_type, payload, status, last_sync_time
-    ):
+    async def update_outbox(self, id, operation_type, payload, status, last_sync_time):
         self.outbox_entry = (
-            idempotency_key,
+            id,
             operation_type,
             payload,
             status,
@@ -240,16 +228,15 @@ async def test_get_ticket_persists_ticket_and_outbox_and_commits(
         "ada@example.com",
     )
     assert repo.merged_ticket is not None
-    assert repo.merged_ticket[:4] == (
-        idempotency_key,
-        event_id,
-        ticket_id,
-        ticket_request.model_dump(),
-    )
-    assert repo.merged_ticket[4].tzinfo is UTC
+    assert repo.merged_ticket["ticket_id"] == ticket_id
+    assert repo.merged_ticket["event_id"] == event_id
+    assert repo.merged_ticket["payload"] == ticket_request.model_dump()
+    assert repo.merged_ticket["idempotency_key"] == idempotency_key
+    assert repo.merged_ticket["date"].tzinfo is UTC
     assert repo.outbox_entry is not None
+    assert repo.outbox_entry[0] != idempotency_key
     assert repo.outbox_entry[:4] == (
-        idempotency_key,
+        repo.outbox_entry[0],
         "get",
         {"ticket_id": ticket_id},
         False,
@@ -371,3 +358,26 @@ async def test_get_ticket_logic_registers_ticket_for_new_key(
     assert result.ticket_id == ticket_id
     assert provider.register_called
     assert repo.merged_ticket is not None
+
+
+@pytest.mark.asyncio
+async def test_get_ticket_without_idempotency_key_registers_and_persists_empty_key(
+    ticket_id, event_id, valid_event
+):
+    request = TicketRequest(
+        event_id=event_id,
+        first_name="Ada",
+        last_name="Lovelace",
+        email="ada@example.com",
+        seat="B1",
+    )
+    repo = FakeRepo(valid_event)
+    provider = FakeProvider(ticket_id)
+
+    result = await make_service(repo, provider).get_ticket_logic(request)
+
+    assert result.ticket_id == ticket_id
+    assert provider.register_called
+    assert repo.merged_ticket is not None
+    assert repo.merged_ticket["idempotency_key"] == ""
+    assert repo.last_idempotency_key is None

@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from eventsaggregator.client.provider import EventProviderClient
 from eventsaggregator.core.enums import EventStatus
@@ -55,14 +55,14 @@ class TicketService:
 
         try:
             await self.events.merge_ticket(
-                data.idempotency_key,
-                data.event_id,
-                registered_ticket.ticket_id,
-                data.model_dump(),
-                datetime.now(UTC),
+                ticket_id=registered_ticket.ticket_id,
+                event_id=data.event_id,
+                payload=data.model_dump(),
+                date=datetime.now(UTC),
+                idempotency_key=data.idempotency_key or "",
             )
             await self.events.update_outbox(
-                data.idempotency_key,
+                uuid4(),
                 "get",
                 registered_ticket.model_dump(),
                 False,
@@ -89,7 +89,9 @@ class TicketService:
         return DeleteTicketResponse(success=res.success)
 
     async def get_ticket_logic(self, data: TicketRequest) -> TicketResponse:
-        if await self.events.check_idempotency_ticket(data.idempotency_key):
+        if data.idempotency_key and await self.events.check_idempotency_ticket(
+            data.idempotency_key
+        ):
             payload = await self.events.check_ticket_payload(data.idempotency_key)
             if payload == data.model_dump():
                 ticket_id = await self.events.get_ticket_id(data.idempotency_key)

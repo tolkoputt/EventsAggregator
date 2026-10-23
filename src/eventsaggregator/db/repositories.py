@@ -91,19 +91,19 @@ class EventRepository:
 
     async def merge_ticket(
         self,
-        idempotency_key: UUID,
-        event_id: UUID,
         ticket_id: UUID,
+        event_id: UUID,
         payload: dict[str, Any],
         date: datetime,
+        idempotency_key: str,
     ):
         await self.session.merge(
             Tickets(
-                id=idempotency_key,
-                event_id=event_id,
                 ticket_id=ticket_id,
+                event_id=event_id,
                 payload=payload,
                 created_at=date,
+                idempotency_key=idempotency_key,
             )
         )
 
@@ -118,24 +118,26 @@ class EventRepository:
         if ticket:
             await self.session.delete(ticket)
 
-    async def check_idempotency_ticket(self, idempotency_key: UUID):
+    async def check_idempotency_ticket(self, idempotency_key: str):
         return await self.session.scalar(
-            select(Tickets.id).where(Tickets.id == idempotency_key)
+            select(Tickets.idempotency_key).where(
+                Tickets.idempotency_key == idempotency_key
+            )
         )
 
-    async def check_ticket_payload(self, idempotency_key: UUID):
+    async def check_ticket_payload(self, idempotency_key: str):
         return await self.session.scalar(
-            select(Tickets.payload).where(Tickets.id == idempotency_key)
+            select(Tickets.payload).where(Tickets.idempotency_key == idempotency_key)
         )
 
-    async def get_ticket_id(self, idempotency_key: UUID):
+    async def get_ticket_id(self, idempotency_key: str):
         return await self.session.scalar(
-            select(Tickets.ticket_id).where(Tickets.id == idempotency_key)
+            select(Tickets.ticket_id).where(Tickets.idempotency_key == idempotency_key)
         )
 
     async def update_outbox(
         self,
-        idempotency_key: UUID,
+        id: UUID,
         operation_type: str,
         payload: dict[str, Any],
         status: bool,
@@ -143,7 +145,7 @@ class EventRepository:
     ):
         await self.session.merge(
             OutBox(
-                id=idempotency_key,
+                id=id,
                 operation_type=operation_type,
                 payload=payload,
                 status=status,
