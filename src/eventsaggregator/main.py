@@ -36,7 +36,7 @@ async def run_scheduled_sync(provider: EventProviderClient) -> None:
         logger.exception("Scheduled sync failed")
 
 
-async def run_scheduled_outbox() -> None: ...
+# async def run_scheduled_outbox() -> None: ...
 
 
 @asynccontextmanager
@@ -60,16 +60,16 @@ async def lifespan(app: FastAPI):
         misfire_grace_time=3600,
         coalesce=True,
     )
-    scheduler.add_job(
-        run_scheduled_outbox,
-        CronTrigger(minute=1),
-        args=[...],
-        id="outbox",
-        replace_existing=True,
-        max_instances=1,
-        misfire_grace_time=3600,
-        coalesce=True,
-    )
+    # scheduler.add_job(
+    #     run_scheduled_outbox,
+    #     CronTrigger(minute=1),
+    #     args=[...],
+    #     id="outbox",
+    #     replace_existing=True,
+    #     max_instances=1,
+    #     misfire_grace_time=3600,
+    #     coalesce=True,
+    # )
     scheduler.start()
 
     app.state.cache = EventsCache()
