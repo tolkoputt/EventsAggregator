@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, Uuid
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -65,12 +66,20 @@ class Event(Base):
 class Tickets(Base):
     __tablename__ = "tickets"
 
-    event_id: Mapped[UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("events.id"),
-        index=True,
-    )
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), index=True)
+    event_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), ForeignKey("events.id"))
     ticket_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     event: Mapped[Event] = relationship(back_populates="tickets")
+
+
+class OutBox(Base):
+    __tablename__ = "outbox"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    operation_type: Mapped[str] = mapped_column(String())
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    status: Mapped[bool] = mapped_column(Boolean(), index=True)
+    last_sync_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))

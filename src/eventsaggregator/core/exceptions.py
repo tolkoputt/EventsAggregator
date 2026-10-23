@@ -24,3 +24,11 @@ class ProviderError(Exception):
 
 class TicketNotFound(Exception):
     pass
+
+
+class TicketRegisterError(Exception):
+    pass
+
+
+class TicketUnequalPayload(Exception):
+    pass

@@ -1,11 +1,12 @@
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from eventsaggregator.db.models import Event, Place, Sync, Tickets
+from eventsaggregator.db.models import Event, OutBox, Place, Sync, Tickets
 
 
 class EventRepository:
@@ -37,7 +38,7 @@ class EventRepository:
         if date_from:
             stmt = stmt.where(Event.event_time >= date_from)
         items = (await self.session.scalars(stmt)).all()
-        return list(items), total
+        return list(items), total if total is not None else 0
 
     async def one_event(self, event_id: UUID) -> Event | None:
         stmt = (
@@ -88,9 +89,22 @@ class EventRepository:
         result = await self.session.scalar(stmt)
         return result
 
-    async def merge_ticket(self, event_id, ticket_id, date):
+    async def merge_ticket(
+        self,
+        idempotency_key: UUID,
+        event_id: UUID,
+        ticket_id: UUID,
+        payload: dict[str, Any],
+        date: datetime,
+    ):
         await self.session.merge(
-            Tickets(event_id=event_id, ticket_id=ticket_id, created_at=date)
+            Tickets(
+                id=idempotency_key,
+                event_id=event_id,
+                ticket_id=ticket_id,
+                payload=payload,
+                created_at=date,
+            )
         )
 
     async def get_event_id_by_ticket(self, ticket_id: UUID) -> UUID | None:
@@ -103,3 +117,36 @@ class EventRepository:
         ticket = await self.session.scalar(stmt)
         if ticket:
             await self.session.delete(ticket)
+
+    async def check_idempotency_ticket(self, idempotency_key: UUID):
+        return await self.session.scalar(
+            select(Tickets.id).where(Tickets.id == idempotency_key)
+        )
+
+    async def check_ticket_payload(self, idempotency_key: UUID):
+        return await self.session.scalar(
+            select(Tickets.payload).where(Tickets.id == idempotency_key)
+        )
+
+    async def get_ticket_id(self, idempotency_key: UUID):
+        return await self.session.scalar(
+            select(Tickets.ticket_id).where(Tickets.id == idempotency_key)
+        )
+
+    async def update_outbox(
+        self,
+        idempotency_key: UUID,
+        operation_type: str,
+        payload: dict[str, Any],
+        status: bool,
+        last_sync_time: datetime,
+    ):
+        await self.session.merge(
+            OutBox(
+                id=idempotency_key,
+                operation_type=operation_type,
+                payload=payload,
+                status=status,
+                last_sync_time=last_sync_time,
+            )
+        )

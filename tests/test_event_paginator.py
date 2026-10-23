@@ -31,7 +31,7 @@ async def test_single_page_is_yielded_once():
     page = make_page(["a"])
     client = FakeClient(page)
 
-    pages = [p async for p in EventsPaginator(client, "2026-10-12")]
+    pages = [p async for p in EventsPaginator(client, "2026-10-12")]  # type: ignore
 
     assert pages == [page]
     assert client.fetch_events_calls == ["2026-10-12"]
@@ -45,7 +45,7 @@ async def test_follows_next_links_in_order():
     page3 = make_page(["c"])
     client = FakeClient(page1, {"url-2": page2, "url-3": page3})
 
-    pages = [p async for p in EventsPaginator(client, "2000-01-01")]
+    pages = [p async for p in EventsPaginator(client, "2000-01-01")]  # type: ignore
 
     assert pages == [page1, page2, page3]
     assert client.fetch_events_calls == ["2000-01-01"]
@@ -57,7 +57,7 @@ async def test_empty_first_page_is_still_yielded():
     page = make_page([])
     client = FakeClient(page)
 
-    pages = [p async for p in EventsPaginator(client, "2026-10-12")]
+    pages = [p async for p in EventsPaginator(client, "2026-10-12")]  # type: ignore
 
     assert pages == [page]
 
@@ -65,7 +65,7 @@ async def test_empty_first_page_is_still_yielded():
 @pytest.mark.asyncio
 async def test_stays_exhausted_after_last_page():
     client = FakeClient(make_page(["a"]))
-    paginator = EventsPaginator(client, "2026-10-12")
+    paginator = EventsPaginator(client, "2026-10-12")  # type: ignore
 
     await paginator.__anext__()
     with pytest.raises(StopAsyncIteration):
@@ -80,7 +80,7 @@ async def test_stays_exhausted_after_last_page():
 def test_no_requests_before_iteration_starts():
     client = FakeClient(make_page([]))
 
-    EventsPaginator(client, "2026-10-12")
+    EventsPaginator(client, "2026-10-12")  # type: ignore
 
     assert client.fetch_events_calls == []
     assert client.fetch_next_events_calls == []
@@ -93,7 +93,7 @@ async def test_client_error_propagates():
             raise ProviderError("provider unavailable")
 
     client = FailingClient(make_page(["a"], "url-2"))
-    paginator = EventsPaginator(client, "2026-10-12")
+    paginator = EventsPaginator(client, "2026-10-12")  # type: ignore
 
     await paginator.__anext__()
     with pytest.raises(ProviderError, match="provider unavailable"):

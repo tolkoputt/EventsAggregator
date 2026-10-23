@@ -48,8 +48,8 @@ async def test_get_seats_raises_when_event_is_not_published():
     event_id = UUID("1045417a-8597-4d37-9e7d-57c44576b871")
 
     service = SeatsService(
-        events=repo,
-        provider=FakeProvider(seats=[]),
+        events=repo,  # type: ignore
+        provider=FakeProvider(seats=[]),  # type: ignore
         cache=FakeCache(),
     )
 
@@ -66,7 +66,7 @@ async def test_get_seats_fetches_and_caches_seats_when_cache_is_empty():
     repo = FakeRepo(EventStatus.PUBLISHED)
     provider = FakeProvider(seats=available_seats)
     cache = FakeCache()
-    service = SeatsService(events=repo, provider=provider, cache=cache)
+    service = SeatsService(events=repo, provider=provider, cache=cache)  # type: ignore
 
     result = await service.get_seats(event_id=event_id)
 
@@ -84,7 +84,7 @@ async def test_get_seats_returns_cached_seats_without_calling_provider():
     repo = FakeRepo(EventStatus.PUBLISHED)
     provider = FakeProvider(seats=["C1"])
     cache = FakeCache({str(event_id): available_seats})
-    service = SeatsService(events=repo, provider=provider, cache=cache)
+    service = SeatsService(events=repo, provider=provider, cache=cache)  # type: ignore
 
     result = await service.get_seats(event_id=event_id)
 

@@ -36,6 +36,9 @@ async def run_scheduled_sync(provider: EventProviderClient) -> None:
         logger.exception("Scheduled sync failed")
 
 
+async def run_scheduled_outbox() -> None: ...
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.http = httpx.AsyncClient(
@@ -52,6 +55,16 @@ async def lifespan(app: FastAPI):
         CronTrigger(hour=3, minute=0),
         args=[provider],
         id="daily_sync",
+        replace_existing=True,
+        max_instances=1,
+        misfire_grace_time=3600,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        run_scheduled_outbox,
+        CronTrigger(minute=1),
+        args=[...],
+        id="outbox",
         replace_existing=True,
         max_instances=1,
         misfire_grace_time=3600,

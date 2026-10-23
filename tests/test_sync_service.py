@@ -76,7 +76,7 @@ def make_event(event_id, place):
 @pytest.mark.asyncio
 async def test_sync_events_skips_sync_when_another_sync_holds_lock(paginator):
     repo = FakeRepo(last_changed_at=False)
-    service = SyncService(events=repo, client=object())
+    service = SyncService(events=repo, client=object())  # type: ignore
 
     result = await service.sync_events()
 
@@ -98,7 +98,7 @@ async def test_sync_events_collects_all_pages_and_persists_events_and_places(pag
         SimpleNamespace(results=[event_a, event_b]),
         SimpleNamespace(results=[event_c]),
     ]
-    service = SyncService(events=repo, client=client)
+    service = SyncService(events=repo, client=client)  # type: ignore
 
     result = await service.sync_events()
 
@@ -127,7 +127,7 @@ async def test_sync_events_collects_all_pages_and_persists_events_and_places(pag
 async def test_sync_events_uses_initial_date_when_no_previous_sync_exists(paginator):
     repo = FakeRepo(last_changed_at=None)
     paginator.pages = [SimpleNamespace(results=[])]
-    service = SyncService(events=repo, client=object())
+    service = SyncService(events=repo, client=object())  # type: ignore
 
     result = await service.sync_events()
 

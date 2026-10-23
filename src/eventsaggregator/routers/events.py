@@ -4,8 +4,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from eventsaggregator.core.exceptions import EventNotFound, EventNotPublished
+from eventsaggregator.db.models import Event
 from eventsaggregator.deps import get_events_service, get_seats_service
 from eventsaggregator.schemas.events import (
+    EventOut,
     EventOutSeatsPattern,
     Page,
     PageParams,
@@ -23,10 +25,10 @@ async def get_event(
     event_service: Annotated[EventsService, Depends(get_events_service)],
 ) -> EventOutSeatsPattern:
     try:
-        result = await event_service.get_event(event_id)
+        result: Event = await event_service.get_event(event_id)
     except EventNotFound:
         raise HTTPException(status_code=404, detail="Event not found")
-    return result
+    return EventOutSeatsPattern.model_validate(result)
 
 
 @router.get("", response_model=Page)
@@ -46,7 +48,7 @@ async def get_events(
         if (params.page + 1) * params.page_size < total
         else None,
         previous=link(params.page - 1) if params.page > 1 else None,
-        results=items,
+        results=[EventOut.model_validate(item) for item in items],
     )
 
 

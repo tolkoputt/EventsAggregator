@@ -10,6 +10,8 @@ from eventsaggregator.core.exceptions import (
     InvalidSeat,
     RegistrationDeadlinePassed,
     TicketNotFound,
+    TicketRegisterError,
+    TicketUnequalPayload,
 )
 from eventsaggregator.deps import get_ticket_service
 from eventsaggregator.schemas.ticket import (
@@ -28,7 +30,7 @@ async def get_ticket(
     ticket_service: Annotated[TicketService, Depends(get_ticket_service)],
 ) -> TicketResponse:
     try:
-        return await ticket_service.get_ticket(data)
+        return await ticket_service.get_ticket_logic(data)
     except InvalidSeat:
         raise HTTPException(status_code=400, detail="Invalid seat")
     except EventNotPublished:
@@ -39,6 +41,10 @@ async def get_ticket(
         raise HTTPException(status_code=404, detail="Event not found")
     except InvalidBody:
         raise HTTPException(status_code=400, detail="Invalid body")
+    except TicketRegisterError:
+        raise HTTPException(status_code=500, detail="Register error")
+    except TicketUnequalPayload:
+        raise HTTPException(status_code=409, detail="Unequal payload")
 
 
 @router.delete("/{ticket_id}")

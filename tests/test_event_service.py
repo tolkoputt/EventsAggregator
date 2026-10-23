@@ -24,7 +24,7 @@ class FakeRepo:
 @pytest.mark.asyncio
 async def test_get_event_raise_not_found():
     repo = FakeRepo(event=None)
-    service = EventsService(events=repo)
+    service = EventsService(events=repo)  # type: ignore
     event_id = UUID("d4f53b3c-1f70-4b5c-a63d-c25e1b488e76")
 
     with pytest.raises(EventNotFound):
@@ -37,7 +37,7 @@ async def test_get_event_success():
         "id": UUID("d4f53b3c-1f70-4b5c-a63d-c25e1b488e76"),
     }
     repo = FakeRepo(event=fake_event)
-    service = EventsService(events=repo)
+    service = EventsService(events=repo)  # type: ignore
     event_id = UUID("d4f53b3c-1f70-4b5c-a63d-c25e1b488e76")
 
     event = await service.get_event(event_id)
@@ -49,7 +49,7 @@ async def test_list_events():
     date_from = datetime.datetime(2025, 1, 1, tzinfo=datetime.UTC)
     expected_result = ([], 25)
     repo = FakeRepo(event=expected_result)
-    service = EventsService(events=repo)
+    service = EventsService(events=repo)  # type: ignore
 
     result = await service.list_events(
         PageParams(page=3, page_size=10, date_from=date_from)
