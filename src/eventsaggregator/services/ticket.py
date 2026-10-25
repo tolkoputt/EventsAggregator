@@ -57,14 +57,14 @@ class TicketService:
             await self.events.merge_ticket(
                 ticket_id=registered_ticket.ticket_id,
                 event_id=data.event_id,
-                payload=data.model_dump(),
+                payload=data.model_dump(mode="json"),
                 date=datetime.now(UTC),
                 idempotency_key=data.idempotency_key or "",
             )
             await self.events.update_outbox(
                 uuid4(),
                 "get",
-                registered_ticket.model_dump(),
+                registered_ticket.model_dump(mode="json"),
                 False,
                 datetime.now(UTC),
             )
@@ -93,7 +93,7 @@ class TicketService:
             data.idempotency_key
         ):
             payload = await self.events.check_ticket_payload(data.idempotency_key)
-            if payload == data.model_dump():
+            if payload == data.model_dump(mode="json"):
                 ticket_id = await self.events.get_ticket_id(data.idempotency_key)
                 if ticket_id:
                     return TicketResponse(ticket_id=ticket_id)
