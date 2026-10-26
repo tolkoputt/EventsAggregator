@@ -1,11 +1,14 @@
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import UUID
 
+import httpx
 import pytest
 
 from eventsaggregator.client.capashino import (
     CapashinoPermanentError,
+    CapashinoProviderClient,
     CapashinoTransientError,
     NotificationAlreadyExists,
     NotificationCreated,
@@ -129,3 +132,30 @@ async def test_worker_completes_created_notification():
 
     assert repo.entry.status is True
     assert repo.entry.payload["id"] == "notification-1"
+
+
+@pytest.mark.asyncio
+async def test_worker_completes_after_500_then_idempotency_conflict():
+    statuses = iter([500, 409])
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(next(statuses))
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler),
+        base_url="https://capashino.test",
+    ) as http_client:
+        repo = FakeRepository(valid_payload())
+        client = CapashinoProviderClient(http_client, "test-api-key")
+
+        await OutBoxService(repo, client).worker()
+
+    assert len(requests) == 2
+    assert all(request.method == "POST" for request in requests)
+    assert {json.loads(request.read())["idempotency_key"] for request in requests} == {
+        str(OUTBOX_ID)
+    }
+    assert repo.entry.attempt_count == 1
+    assert repo.entry.status is True

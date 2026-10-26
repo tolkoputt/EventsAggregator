@@ -45,7 +45,7 @@ class CapashinoProviderClient:
                 headers={"X-API-Key": self.api_key},
                 json={
                     "message": message,
-                    "reference_id": reference_id,
+                    "reference_id": str(reference_id),
                     "idempotency_key": idempotency_key,
                 },
             )
