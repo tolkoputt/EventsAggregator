@@ -152,3 +152,16 @@ class EventRepository:
                 last_sync_time=last_sync_time,
             )
         )
+
+    async def get_outbox(self, max_attempts: int) -> OutBox | None:
+        stmt = (
+            select(OutBox)
+            .where(
+                OutBox.status.is_(False),
+                OutBox.attempt_count < max_attempts,
+            )
+            .order_by(OutBox.last_sync_time, OutBox.id)
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+        return await self.session.scalar(stmt)

@@ -4,7 +4,17 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    Uuid,
+    text,
+)
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -83,3 +93,6 @@ class OutBox(Base):
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     status: Mapped[bool] = mapped_column(Boolean(), index=True)
     last_sync_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempt_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )

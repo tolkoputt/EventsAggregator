@@ -4,18 +4,21 @@ from contextlib import asynccontextmanager
 import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from eventsaggregator.client.capashino import CapashinoProviderClient
 from eventsaggregator.client.provider import EventProviderClient
 from eventsaggregator.core.config import settings
-from eventsaggregator.core.exceptions import ProviderError
+from eventsaggregator.core.exceptions import CapashinoError, ProviderError
 from eventsaggregator.db.db import async_session_factory
 from eventsaggregator.db.repositories import EventRepository
 from eventsaggregator.routers import events, health, sync, ticket
 from eventsaggregator.services.cache import EventsCache
+from eventsaggregator.services.outbox import OutBoxService
 from eventsaggregator.services.sync import SyncService
 
 logger = logging.getLogger(__name__)
@@ -36,7 +39,20 @@ async def run_scheduled_sync(provider: EventProviderClient) -> None:
         logger.exception("Scheduled sync failed")
 
 
-# async def run_scheduled_outbox() -> None: ...
+async def run_scheduled_outbox(provider: CapashinoProviderClient) -> None:
+    try:
+        async with async_session_factory() as session:
+            repository = EventRepository(session)
+            service = OutBoxService(events=repository, client=provider)
+
+            try:
+                await service.worker()
+                logger.info("Scheduled Outbox finished")
+            except CapashinoError:
+                logger.warning("Scheduled Outbox skipped: service error")
+
+    except Exception:
+        logger.exception("Scheduled sync failed")
 
 
 @asynccontextmanager
@@ -46,8 +62,16 @@ async def lifespan(app: FastAPI):
         timeout=httpx.Timeout(10.0, connect=3.0),
         follow_redirects=True,
     )
+    app.state.http_capashino = httpx.AsyncClient(
+        base_url=settings.CAPASHINO_API_URL,
+        timeout=httpx.Timeout(10.0, connect=3.0),
+        follow_redirects=True,
+    )
 
     provider = EventProviderClient(app.state.http, settings.EXTERNAL_API_KEY)
+    capashino_provider = CapashinoProviderClient(
+        app.state.http_capashino, settings.EXTERNAL_API_KEY
+    )
 
     scheduler = AsyncIOScheduler(timezone="Asia/Yekaterinburg")
     scheduler.add_job(
@@ -60,16 +84,16 @@ async def lifespan(app: FastAPI):
         misfire_grace_time=3600,
         coalesce=True,
     )
-    # scheduler.add_job(
-    #     run_scheduled_outbox,
-    #     CronTrigger(minute=1),
-    #     args=[...],
-    #     id="outbox",
-    #     replace_existing=True,
-    #     max_instances=1,
-    #     misfire_grace_time=3600,
-    #     coalesce=True,
-    # )
+    scheduler.add_job(
+        run_scheduled_outbox,
+        IntervalTrigger(minutes=1),
+        args=[capashino_provider],
+        id="outbox",
+        replace_existing=True,
+        max_instances=1,
+        misfire_grace_time=3600,
+        coalesce=True,
+    )
     scheduler.start()
 
     app.state.cache = EventsCache()
@@ -79,6 +103,7 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown(wait=False)
     app.state.cache = None
     await app.state.http.aclose()
+    await app.state.http_capashino.aclose()
 
 
 api_router = APIRouter(prefix="/api")

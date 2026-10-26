@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PlaceResponse(BaseModel):
@@ -43,3 +43,12 @@ class RegisterTicket(BaseModel):
 
 class DeleteTicket(BaseModel):
     success: bool
+
+
+class CapashinoResponse(BaseModel):
+    id: str
+    user_id: str
+    message: str
+    reference_id: UUID
+    created_at: datetime
+    idempotency_key: str | None = Field(default=None)

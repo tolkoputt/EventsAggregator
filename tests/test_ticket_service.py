@@ -230,7 +230,7 @@ async def test_get_ticket_persists_ticket_and_outbox_and_commits(
     assert repo.merged_ticket is not None
     assert repo.merged_ticket["ticket_id"] == ticket_id
     assert repo.merged_ticket["event_id"] == event_id
-    assert repo.merged_ticket["payload"] == ticket_request.model_dump()
+    assert repo.merged_ticket["payload"] == ticket_request.model_dump(mode="json")
     assert repo.merged_ticket["idempotency_key"] == idempotency_key
     assert repo.merged_ticket["date"].tzinfo is UTC
     assert repo.outbox_entry is not None
@@ -238,7 +238,7 @@ async def test_get_ticket_persists_ticket_and_outbox_and_commits(
     assert repo.outbox_entry[:4] == (
         repo.outbox_entry[0],
         "get",
-        {"ticket_id": ticket_id},
+        {"ticket_id": str(ticket_id)},
         False,
     )
     assert repo.outbox_entry[4].tzinfo is UTC
@@ -312,7 +312,7 @@ async def test_get_ticket_logic_returns_existing_ticket_for_same_payload(
 ):
     repo = FakeRepo()
     repo.existing_idempotency_key = True
-    repo.existing_payload = ticket_request.model_dump()
+    repo.existing_payload = ticket_request.model_dump(mode="json")
     repo.existing_ticket_id = ticket_id
     provider = FakeProvider()
 
@@ -328,7 +328,10 @@ async def test_get_ticket_logic_raises_when_idempotency_payload_differs(
 ):
     repo = FakeRepo()
     repo.existing_idempotency_key = True
-    repo.existing_payload = {**ticket_request.model_dump(), "seat": "B2"}
+    repo.existing_payload = {
+        **ticket_request.model_dump(mode="json"),
+        "seat": "B2",
+    }
 
     with pytest.raises(TicketUnequalPayload):
         await make_service(repo, FakeProvider()).get_ticket_logic(ticket_request)
@@ -340,7 +343,7 @@ async def test_get_ticket_logic_raises_when_existing_key_has_no_ticket(
 ):
     repo = FakeRepo()
     repo.existing_idempotency_key = True
-    repo.existing_payload = ticket_request.model_dump()
+    repo.existing_payload = ticket_request.model_dump(mode="json")
 
     with pytest.raises(TicketNotFound):
         await make_service(repo, FakeProvider()).get_ticket_logic(ticket_request)

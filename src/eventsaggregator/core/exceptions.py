@@ -32,3 +32,7 @@ class TicketRegisterError(Exception):
 
 class TicketUnequalPayload(Exception):
     pass
+
+
+class CapashinoError(Exception):
+    pass

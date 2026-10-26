@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     EXTERNAL_API_KEY: str = Field(..., description="API key for external service")
     EXTERNAL_API_URL: str = Field(..., description="External API base URL")
+    CAPASHINO_API_URL: str = Field(..., description="Capashino API base URL")
 
     model_config = SettingsConfigDict(
         env_file=os.getenv("ENV_FILE", ".env"),
