@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     EXTERNAL_API_URL: str = Field(..., description="External API base URL")
     CAPASHINO_API_URL: str = Field(..., description="Capashino API base URL")
 
+    SENTRY_DSN: str | None = Field(default=None, description="GlitchTip DSN")
+
     model_config = SettingsConfigDict(
         env_file=os.getenv("ENV_FILE", ".env"),
         env_file_encoding="utf-8",

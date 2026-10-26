@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+import sentry_sdk
+
 from eventsaggregator.client.provider import EventProviderClient
 from eventsaggregator.core.enums import EventStatus
 from eventsaggregator.core.exceptions import (
@@ -68,9 +70,10 @@ class TicketService:
                 False,
                 datetime.now(UTC),
             )
-        except Exception:  # noqa: BLE001
+        except Exception as exc:
             await self.events.session.rollback()
-            raise TicketRegisterError
+            sentry_sdk.capture_exception(exc)
+            raise TicketRegisterError from exc
 
         await self.events.session.commit()
         return TicketResponse(ticket_id=registered_ticket.ticket_id)

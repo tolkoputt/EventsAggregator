@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 import httpx
+import sentry_sdk
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -21,6 +22,13 @@ from eventsaggregator.services.cache import EventsCache
 from eventsaggregator.services.outbox import OutBoxService
 from eventsaggregator.services.sync import SyncService
 
+sentry_sdk.init(
+    dsn=settings.SENTRY_DSN,
+    environment="production",
+    traces_sample_rate=0.0,
+    send_default_pii=False,
+)
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
@@ -35,7 +43,8 @@ async def run_scheduled_sync(provider: EventProviderClient) -> None:
                 logger.info("Scheduled sync finished")
             else:
                 logger.warning("Scheduled sync skipped: another sync is running")
-    except Exception:
+    except Exception as exc:
+        sentry_sdk.capture_exception(exc)
         logger.exception("Scheduled sync failed")
 
 
@@ -48,11 +57,13 @@ async def run_scheduled_outbox(provider: CapashinoProviderClient) -> None:
             try:
                 await service.worker()
                 logger.info("Scheduled Outbox finished")
-            except CapashinoError:
+            except CapashinoError as exc:
+                sentry_sdk.capture_exception(exc)
                 logger.warning("Scheduled Outbox skipped: service error")
 
-    except Exception:
-        logger.exception("Scheduled sync failed")
+    except Exception as exc:
+        sentry_sdk.capture_exception(exc)
+        logger.exception("Scheduled Outbox failed")
 
 
 @asynccontextmanager
