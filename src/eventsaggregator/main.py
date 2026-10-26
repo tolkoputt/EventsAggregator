@@ -86,7 +86,7 @@ async def lifespan(app: FastAPI):
     )
     scheduler.add_job(
         run_scheduled_outbox,
-        IntervalTrigger(minutes=1),
+        IntervalTrigger(seconds=20),
         args=[capashino_provider],
         id="outbox",
         replace_existing=True,
