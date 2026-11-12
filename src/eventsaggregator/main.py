@@ -1,4 +1,5 @@
 import logging
+import time
 from contextlib import asynccontextmanager
 
 import httpx
@@ -10,6 +11,7 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from eventsaggregator.client.capashino import CapashinoProviderClient
 from eventsaggregator.client.provider import EventProviderClient
@@ -17,8 +19,12 @@ from eventsaggregator.core.config import settings
 from eventsaggregator.core.exceptions import CapashinoError, ProviderError
 from eventsaggregator.db.db import async_session_factory
 from eventsaggregator.db.repositories import EventRepository
-from eventsaggregator.routers import events, health, sync, ticket
+from eventsaggregator.routers import events, health, metrics, sync, ticket
 from eventsaggregator.services.cache import EventsCache
+from eventsaggregator.services.metrics import (
+    http_request_duration_seconds,
+    http_requests_total,
+)
 from eventsaggregator.services.outbox import OutBoxService
 from eventsaggregator.services.sync import SyncService
 
@@ -122,6 +128,7 @@ api_router.include_router(health.router)
 api_router.include_router(sync.router)
 api_router.include_router(events.router)
 api_router.include_router(ticket.router)
+api_router.include_router(metrics.router)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -146,3 +153,26 @@ async def request_validation_error_handler(
         return JSONResponse(status_code=400, content={"detail": "Invalid body"})
 
     return await request_validation_exception_handler(request, exc)
+
+
+class MetricsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        start_time = time.monotonic()
+        response = await call_next(request)
+        duration = time.monotonic() - start_time
+
+        http_requests_total.labels(
+            method=request.method,
+            endpoint=request.url.path,
+            status=response.status_code,
+        ).inc()
+
+        http_request_duration_seconds.labels(
+            method=request.method,
+            endpoint=request.url.path,
+        ).observe(duration)
+
+        return response
+
+
+app.add_middleware(MetricsMiddleware)

@@ -94,7 +94,7 @@ async def test_worker_stops_retrying_after_max_attempts():
         [CapashinoTransientError("temporary") for _ in range(MAX_ATTEMPTS)]
     )
 
-    await OutBoxService(repo, client).worker()
+    await OutBoxService(repo, client).worker()  # type: ignore
 
     assert repo.entry.attempt_count == MAX_ATTEMPTS
     assert repo.entry.status is False
@@ -106,7 +106,7 @@ async def test_worker_stops_retrying_after_max_attempts():
 async def test_worker_completes_existing_idempotent_notification():
     repo = FakeRepository(valid_payload())
 
-    await OutBoxService(repo, FakeClient([NotificationAlreadyExists()])).worker()
+    await OutBoxService(repo, FakeClient([NotificationAlreadyExists()])).worker()  # type: ignore
 
     assert repo.entry.status is True
     assert repo.entry.payload == valid_payload()
@@ -117,7 +117,7 @@ async def test_worker_stops_retrying_permanent_error():
     repo = FakeRepository(valid_payload())
     client = FakeClient([CapashinoPermanentError("bad request")])
 
-    await OutBoxService(repo, client).worker()
+    await OutBoxService(repo, client).worker()  # type: ignore
 
     assert repo.entry.attempt_count == MAX_ATTEMPTS
     assert repo.entry.status is False
@@ -128,7 +128,7 @@ async def test_worker_stops_retrying_permanent_error():
 async def test_worker_completes_created_notification():
     repo = FakeRepository(valid_payload())
 
-    await OutBoxService(repo, FakeClient([created_result()])).worker()
+    await OutBoxService(repo, FakeClient([created_result()])).worker()  # type: ignore
 
     assert repo.entry.status is True
     assert repo.entry.payload["id"] == "notification-1"
@@ -150,7 +150,7 @@ async def test_worker_completes_after_500_then_idempotency_conflict():
         repo = FakeRepository(valid_payload())
         client = CapashinoProviderClient(http_client, "test-api-key")
 
-        await OutBoxService(repo, client).worker()
+        await OutBoxService(repo, client).worker()  # type: ignore
 
     assert len(requests) == 2
     assert all(request.method == "POST" for request in requests)

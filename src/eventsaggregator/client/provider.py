@@ -1,3 +1,4 @@
+import time
 from uuid import UUID
 
 import httpx
@@ -9,6 +10,10 @@ from eventsaggregator.client.schemas import (
     SyncTriggerResponse,
 )
 from eventsaggregator.core.exceptions import ProviderError
+from eventsaggregator.services.metrics import (
+    events_provider_request_duration_seconds,
+    events_provider_requests_total,
+)
 
 
 class EventProviderClient:
@@ -18,10 +23,20 @@ class EventProviderClient:
 
     async def _request(self, method: str, url: str, **kwargs) -> dict:
         try:
+            start_time = time.monotonic()
             response = await self.client.request(
                 method, url, headers={"x-api-key": self.api_key}, **kwargs
             )
             response.raise_for_status()
+            duration = time.monotonic() - start_time
+
+            events_provider_requests_total.labels(
+                endpoint=url, status=response.status_code
+            ).inc()
+            events_provider_request_duration_seconds.labels(
+                endpoint=url,
+            ).observe(duration)
+
             return response.json()
         except httpx.HTTPError as e:
             raise ProviderError(str(e)) from e

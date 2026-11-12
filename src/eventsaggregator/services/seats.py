@@ -5,6 +5,7 @@ from eventsaggregator.core.enums import EventStatus
 from eventsaggregator.core.exceptions import EventNotPublished
 from eventsaggregator.db.repositories import EventRepository
 from eventsaggregator.schemas.events import Seats
+from eventsaggregator.services.metrics import cache_hits_total, cache_misses_total
 
 
 class SeatsService:
@@ -20,10 +21,12 @@ class SeatsService:
 
         cached_seats = self.cache.get(str(event_id))
         if cached_seats is not None:
+            cache_hits_total.inc()
             return Seats(event_id=event_id, available_seats=cached_seats)
 
         result = await self.provider.fetch_seats(event_id)
 
         self.cache.set(str(event_id), result.seats)
+        cache_misses_total.inc()
 
         return Seats(event_id=event_id, available_seats=result.seats)

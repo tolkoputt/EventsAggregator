@@ -165,3 +165,15 @@ class EventRepository:
             .with_for_update(skip_locked=True)
         )
         return await self.session.scalar(stmt)
+
+    async def metrics(self) -> dict:
+        stmt = select(func.count()).select_from(Tickets)
+        tickets_created_total = await self.session.scalar(stmt) or 0
+
+        stmt = select(func.count()).select_from(Event)
+        events_total = await self.session.scalar(stmt) or 0
+
+        return {
+            "tickets_created_total": tickets_created_total,
+            "events_total": events_total,
+        }
