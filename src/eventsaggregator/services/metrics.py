@@ -36,4 +36,5 @@ cache_misses_total = Counter(
 
 # Business metrics
 tickets_created_total = Gauge("tickets_created_total", "Total created ticket")
+tickets_cancelled_total = Gauge("tickets_cancelled_total", "Total cancelled ticket")
 events_total = Gauge("events_total", "Total events")

@@ -128,11 +128,14 @@ api_router.include_router(health.router)
 api_router.include_router(sync.router)
 api_router.include_router(events.router)
 api_router.include_router(ticket.router)
-api_router.include_router(metrics.router)
+
+metrics_router = APIRouter()
+metrics_router.include_router(metrics.router)
 
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(api_router)
+app.include_router(metrics_router)
 
 
 @app.exception_handler(ProviderError)
